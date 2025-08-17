@@ -1,7 +1,5 @@
 # Low-Light-Image-Enhancement
 
-# MIRNet PyTorch Implementation
-
 A PyTorch implementation of **MIRNet (Multi-scale Image Restoration Network)** for low-light image enhancement. This implementation converts the original TensorFlow/Keras code to PyTorch while maintaining the same architecture and approach.
 
 ## Project Structure
