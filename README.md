@@ -145,6 +145,12 @@ The model is trained using:
 - **Optimizer**: Adam with learning rate 1e-4
 - **Scheduler**: ReduceLROnPlateau (monitors validation PSNR)
 
+### Outputs
+
+<img src="./outputs/output0.png" alt="output0" width="600">
+
+<img src="./outputs/output1.png" alt="output1" width="600">
+
 ## File Descriptions
 
 ### `config.py`
