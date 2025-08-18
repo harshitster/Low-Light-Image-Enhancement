@@ -79,25 +79,20 @@ def structural_similarity_index(y_pred, y_true, max_val=1.0):
     Returns:
         torch.Tensor: SSIM value
     """
-    # Constants
     C1 = (0.01 * max_val) ** 2
     C2 = (0.03 * max_val) ** 2
 
-    # Convert to grayscale if RGB
     if y_pred.shape[1] == 3:
         y_pred = torch.mean(y_pred, dim=1, keepdim=True)
         y_true = torch.mean(y_true, dim=1, keepdim=True)
 
-    # Calculate means
     mu_pred = torch.mean(y_pred)
     mu_true = torch.mean(y_true)
 
-    # Calculate variances and covariance
     var_pred = torch.var(y_pred)
     var_true = torch.var(y_true)
     cov = torch.mean((y_pred - mu_pred) * (y_true - mu_true))
 
-    # Calculate SSIM
     numerator = (2 * mu_pred * mu_true + C1) * (2 * cov + C2)
     denominator = (mu_pred**2 + mu_true**2 + C1) * (var_pred + var_true + C2)
 
@@ -194,10 +189,8 @@ def tensor_to_pil(tensor):
     Returns:
         PIL.Image: PIL Image
     """
-    # Clamp values to [0, 1]
     tensor = torch.clamp(tensor, 0, 1)
 
-    # Convert to PIL
     return TF.to_pil_image(tensor)
 
 
@@ -217,7 +210,6 @@ def plot_results(images, titles, figure_size=(12, 8), save_path=None):
         axes = [axes]
 
     for i, (img, title) in enumerate(zip(images, titles)):
-        # Convert tensor to PIL if necessary
         if torch.is_tensor(img):
             img = tensor_to_pil(img.cpu())
 
@@ -249,19 +241,15 @@ def infer_single_image(model, image_path, device, save_path=None):
     """
     model.eval()
 
-    # Load and preprocess image
     original_image = Image.open(image_path).convert("RGB")
-    input_tensor = TF.to_tensor(original_image).unsqueeze(0).to(device)  # [1, C, H, W]
+    input_tensor = TF.to_tensor(original_image).unsqueeze(0).to(device)
 
-    # Inference
     with torch.no_grad():
         enhanced_tensor = model(input_tensor)
 
-    # Convert back to PIL
-    enhanced_tensor = enhanced_tensor.squeeze(0).cpu()  # [C, H, W]
+    enhanced_tensor = enhanced_tensor.squeeze(0).cpu()
     enhanced_image = tensor_to_pil(enhanced_tensor)
 
-    # Save enhanced image if requested
     if save_path:
         enhanced_image.save(save_path)
         print(f"Enhanced image saved: {save_path}")
@@ -284,7 +272,6 @@ def evaluate_model(model, data_loader, device, criterion=None):
     """
     model.eval()
 
-    # Metrics
     loss_meter = AverageMeter()
     psnr_meter = AverageMeter()
     ssim_meter = AverageMeter()
@@ -294,10 +281,8 @@ def evaluate_model(model, data_loader, device, criterion=None):
             low_images = low_images.to(device)
             enhanced_images = enhanced_images.to(device)
 
-            # Forward pass
             outputs = model(low_images)
 
-            # Calculate metrics
             if criterion:
                 loss = criterion(outputs, enhanced_images)
                 loss_meter.update(loss.item(), low_images.size(0))
@@ -317,21 +302,17 @@ def evaluate_model(model, data_loader, device, criterion=None):
 
 
 if __name__ == "__main__":
-    # Test utility functions
     print("Testing utility functions...")
 
-    # Test Charbonnier loss
     criterion = CharbonnierLoss()
     pred = torch.randn(2, 3, 64, 64)
     target = torch.randn(2, 3, 64, 64)
     loss = criterion(pred, target)
     print(f"Charbonnier Loss: {loss.item():.6f}")
 
-    # Test PSNR
     psnr = peak_signal_noise_ratio(pred, target)
     print(f"PSNR: {psnr.item():.2f} dB")
 
-    # Test SSIM
     ssim = structural_similarity_index(pred, target)
     print(f"SSIM: {ssim.item():.4f}")
 

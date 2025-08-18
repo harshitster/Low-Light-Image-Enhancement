@@ -39,20 +39,14 @@ class LOLDataset(Dataset):
         return len(self.low_images)
 
     def __getitem__(self, idx):
-        # Load images
         low_image = Image.open(self.low_images[idx]).convert("RGB")
         enhanced_image = Image.open(self.enhanced_images[idx]).convert("RGB")
 
-        # Convert to tensors
-        low_tensor = TF.to_tensor(low_image)  # [C, H, W], values in [0, 1]
-        enhanced_tensor = TF.to_tensor(enhanced_image)  # [C, H, W], values in [0, 1]
+        low_tensor = TF.to_tensor(low_image)
+        enhanced_tensor = TF.to_tensor(enhanced_image)
 
         if self.is_training:
-            # Random cropping for training
             low_tensor, enhanced_tensor = self._random_crop(low_tensor, enhanced_tensor)
-
-            # Optional: Add more data augmentation here
-            # low_tensor, enhanced_tensor = self._augment(low_tensor, enhanced_tensor)
 
         return low_tensor, enhanced_tensor
 
@@ -60,11 +54,9 @@ class LOLDataset(Dataset):
         """Random crop for data augmentation during training"""
         _, h, w = low_image.shape
 
-        # Generate random crop coordinates
         top = random.randint(0, h - self.image_size)
         left = random.randint(0, w - self.image_size)
 
-        # Crop both images at the same location
         low_cropped = TF.crop(low_image, top, left, self.image_size, self.image_size)
         enhanced_cropped = TF.crop(
             enhanced_image, top, left, self.image_size, self.image_size
@@ -74,17 +66,14 @@ class LOLDataset(Dataset):
 
     def _augment(self, low_image, enhanced_image):
         """Additional data augmentation (optional)"""
-        # Random horizontal flip
         if random.random() > 0.5:
             low_image = TF.hflip(low_image)
             enhanced_image = TF.hflip(enhanced_image)
 
-        # Random vertical flip
         if random.random() > 0.5:
             low_image = TF.vflip(low_image)
             enhanced_image = TF.vflip(enhanced_image)
 
-        # Random rotation (90, 180, 270 degrees)
         if random.random() > 0.5:
             angle = random.choice([90, 180, 270])
             low_image = TF.rotate(low_image, angle)
@@ -110,17 +99,14 @@ class TestDataset(Dataset):
         return len(self.low_images)
 
     def __getitem__(self, idx):
-        # Load low-light image
         low_image = Image.open(self.low_images[idx]).convert("RGB")
-        low_tensor = TF.to_tensor(low_image)  # [C, H, W], values in [0, 1]
+        low_tensor = TF.to_tensor(low_image)
 
         if self.enhanced_images is not None:
-            # Load enhanced image if available (for evaluation)
             enhanced_image = Image.open(self.enhanced_images[idx]).convert("RGB")
             enhanced_tensor = TF.to_tensor(enhanced_image)
             return low_tensor, enhanced_tensor
         else:
-            # Return only low-light image (for inference)
             return low_tensor
 
 
@@ -134,19 +120,16 @@ def load_data_paths(config):
     Returns:
         dict: Dictionary containing data paths for train, val, and test sets
     """
-    # Load training data paths
     train_low_images = sorted(glob(config.TRAIN_LOW_PATH))[: config.MAX_TRAIN_IMAGES]
     train_enhanced_images = sorted(glob(config.TRAIN_HIGH_PATH))[
         : config.MAX_TRAIN_IMAGES
     ]
 
-    # Load validation data paths (remaining training images)
     val_low_images = sorted(glob(config.TRAIN_LOW_PATH))[config.MAX_TRAIN_IMAGES :]
     val_enhanced_images = sorted(glob(config.TRAIN_HIGH_PATH))[
         config.MAX_TRAIN_IMAGES :
     ]
 
-    # Load test data paths
     test_low_images = sorted(glob(config.TEST_LOW_PATH))
     test_enhanced_images = sorted(glob(config.TEST_HIGH_PATH))
 
@@ -167,13 +150,10 @@ def create_data_loaders(config):
     Returns:
         dict: Dictionary containing DataLoaders for train, val, and test sets
     """
-    # Set random seed for reproducibility
     random.seed(config.RANDOM_SEED)
 
-    # Load data paths
     data_paths = load_data_paths(config)
 
-    # Create datasets
     train_dataset = LOLDataset(
         data_paths["train"]["low"],
         data_paths["train"]["enhanced"],
@@ -185,14 +165,13 @@ def create_data_loaders(config):
         data_paths["val"]["low"],
         data_paths["val"]["enhanced"],
         image_size=config.IMAGE_SIZE,
-        is_training=True,  # Keep same processing for validation
+        is_training=True,
     )
 
     test_dataset = TestDataset(
         data_paths["test"]["low"], data_paths["test"]["enhanced"]
     )
 
-    # Create data loaders - removed pin_memory and set to False for CPU
     train_loader = DataLoader(
         train_dataset,
         batch_size=config.BATCH_SIZE,
@@ -211,7 +190,7 @@ def create_data_loaders(config):
 
     test_loader = DataLoader(
         test_dataset,
-        batch_size=1,  # Process one image at a time for testing
+        batch_size=1,
         shuffle=False,
         pin_memory=False,
     )
@@ -226,26 +205,22 @@ def print_dataset_info(data_loaders):
     print(f"- Validation batches: {len(data_loaders['val'])}")
     print(f"- Test samples: {len(data_loaders['test'])}")
 
-    # Get sample batch to show shapes
     sample_batch = next(iter(data_loaders["train"]))
     print(f"- Training batch shape: {sample_batch[0].shape}")
     print(f"- Target batch shape: {sample_batch[1].shape}")
 
 
 if __name__ == "__main__":
-    # Test data loading
     import sys
 
     sys.path.append(".")
     import config
 
-    # Create data loaders
     data_loaders = create_data_loaders(config)
     print_dataset_info(data_loaders)
 
-    # Test data loading
     print("\nTesting data loading...")
     for i, (low, enhanced) in enumerate(data_loaders["train"]):
         print(f"Batch {i}: Low {low.shape}, Enhanced {enhanced.shape}")
-        if i >= 2:  # Just test first few batches
+        if i >= 2:
             break

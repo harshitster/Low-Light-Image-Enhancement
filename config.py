@@ -33,5 +33,5 @@ LR_FACTOR = 0.5  # Factor for learning rate reduction
 MIN_LR_DELTA = 1e-7  # Minimum delta for improvement
 
 # Output
-MODEL_SAVE_PATH = "model.pth"
+MODEL_SAVE_PATH = "./checkpoints/best_model.pth"
 CHECKPOINT_DIR = "checkpoints"

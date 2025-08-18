@@ -10,7 +10,6 @@ import argparse
 import torch
 import matplotlib.pyplot as plt
 
-# Import project modules
 import config
 from model import create_mirnet_model
 from data import create_data_loaders
@@ -35,14 +34,25 @@ def load_trained_model(model_path, device):
     Returns:
         MIRNet: Loaded model
     """
-    # Create model
     model = create_mirnet_model(config)
 
-    # Load weights
     if os.path.exists(model_path):
-        state_dict = torch.load(model_path, map_location=device)
+        checkpoint = torch.load(model_path, map_location=device)
+
+        if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint:
+            state_dict = checkpoint["model_state_dict"]
+            print(f"Loading model from checkpoint: {model_path}")
+            if "epoch" in checkpoint:
+                print(f"Checkpoint epoch: {checkpoint['epoch']}")
+        elif isinstance(checkpoint, dict):
+            state_dict = checkpoint
+            print(f"Loading model state dict: {model_path}")
+        else:
+            print(f"Unexpected checkpoint format in: {model_path}")
+            return None
+
         model.load_state_dict(state_dict)
-        print(f"Model loaded from: {model_path}")
+        print(f"Model loaded successfully from: {model_path}")
     else:
         print(f"Model file not found: {model_path}")
         return None
@@ -65,13 +75,10 @@ def test_on_dataset(model, data_loaders, device, num_samples=6):
     """
     print(f"\nTesting on {num_samples} random samples from test dataset...")
 
-    # Get test data loader
     test_loader = data_loaders["test"]
 
-    # Convert to list for random sampling
     test_data = list(test_loader.dataset)
 
-    # Sample random images
     random_indices = random.sample(
         range(len(test_data)), min(num_samples, len(test_data))
     )
@@ -79,38 +86,30 @@ def test_on_dataset(model, data_loaders, device, num_samples=6):
     for i, idx in enumerate(random_indices):
         print(f"\nProcessing sample {i + 1}/{len(random_indices)}")
 
-        # Get data
-        if len(test_data[idx]) == 2:  # Has ground truth
+        if len(test_data[idx]) == 2:
             low_tensor, enhanced_tensor = test_data[idx]
-        else:  # Only low-light image
+        else:
             low_tensor = test_data[idx]
             enhanced_tensor = None
 
-        # Move to device and add batch dimension
         low_input = low_tensor.unsqueeze(0).to(device)
 
-        # Inference
         with torch.no_grad():
             output_tensor = model(low_input)
 
-        # Remove batch dimension and move to CPU
         output_tensor = output_tensor.squeeze(0).cpu()
 
-        # Convert to PIL images
         low_image = tensor_to_pil(low_tensor)
         enhanced_image = tensor_to_pil(output_tensor)
 
-        # Prepare for plotting
         images = [low_image, enhanced_image]
         titles = ["Original (Low-light)", "MIRNet Enhanced"]
 
-        # Add ground truth if available
         if enhanced_tensor is not None:
             ground_truth = tensor_to_pil(enhanced_tensor)
             images.append(ground_truth)
             titles.append("Ground Truth")
 
-        # Plot results
         plot_results(
             images, titles, figure_size=(15, 5), save_path=f"test_result_{i + 1}.png"
         )
@@ -128,19 +127,15 @@ def test_single_image(model, image_path, device, save_dir="results"):
     """
     print(f"\nProcessing single image: {image_path}")
 
-    # Create save directory
     os.makedirs(save_dir, exist_ok=True)
 
-    # Get image name for saving
     image_name = os.path.splitext(os.path.basename(image_path))[0]
     save_path = os.path.join(save_dir, f"{image_name}_enhanced.png")
 
-    # Perform inference
     original_image, enhanced_image = infer_single_image(
         model, image_path, device, save_path
     )
 
-    # Plot comparison
     plot_results(
         [original_image, enhanced_image],
         ["Original", "MIRNet Enhanced"],
@@ -162,13 +157,10 @@ def evaluate_test_set(model, data_loaders, device):
     """
     print("\nEvaluating on test set...")
 
-    # Criterion for evaluation
     criterion = CharbonnierLoss()
 
-    # Evaluate
     test_metrics = evaluate_model(model, data_loaders["test"], device, criterion)
 
-    # Print results
     print("Test Set Results:")
     print("-" * 30)
     print(f"Loss: {test_metrics['loss']:.6f}")
@@ -211,19 +203,15 @@ def main():
 
     args = parser.parse_args()
 
-    # Set random seed
     set_seed(config.RANDOM_SEED)
 
-    # Device setup - fixed for CPU only
     device = torch.device("cpu")
     print(f"Using device: {device}")
 
-    # Load trained model
     model = load_trained_model(args.model_path, device)
     if model is None:
         return
 
-    # Single image inference
     if args.image_path:
         if os.path.exists(args.image_path):
             test_single_image(model, args.image_path, device, args.save_dir)
@@ -231,7 +219,6 @@ def main():
             print(f"Image not found: {args.image_path}")
             return
 
-    # Test on dataset samples
     if args.test_dataset:
         try:
             data_loaders = create_data_loaders(config)
@@ -239,7 +226,6 @@ def main():
         except Exception as e:
             print(f"Error loading dataset: {e}")
 
-    # Evaluate on test set
     if args.evaluate:
         try:
             data_loaders = create_data_loaders(config)
@@ -247,7 +233,6 @@ def main():
         except Exception as e:
             print(f"Error during evaluation: {e}")
 
-    # Default behavior if no specific action is requested
     if not any([args.image_path, args.test_dataset, args.evaluate]):
         print("No specific action requested. Testing on dataset samples...")
         try:

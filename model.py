@@ -28,15 +28,12 @@ class MIRNet(nn.Module):
         self.msrb_count = msrb_count
         self.channels = channels
 
-        # Input convolution
         self.conv_in = nn.Conv2d(in_channels, channels, kernel_size=3, padding=1)
 
-        # Stack of Recursive Residual Blocks
         self.rrbs = nn.ModuleList(
             [RecursiveResidualBlock(channels, msrb_count) for _ in range(rrb_count)]
         )
 
-        # Output convolution
         self.conv_out = nn.Conv2d(channels, out_channels, kernel_size=3, padding=1)
 
     def forward(self, x):
@@ -49,20 +46,15 @@ class MIRNet(nn.Module):
         Returns:
             torch.Tensor: Enhanced image tensor of shape [B, C, H, W]
         """
-        # Store input for final residual connection
         input_tensor = x
 
-        # Initial feature extraction
         x = self.conv_in(x)
 
-        # Pass through Recursive Residual Blocks
         for rrb in self.rrbs:
             x = rrb(x)
 
-        # Output convolution
         x = self.conv_out(x)
 
-        # Final residual connection with input
         output = input_tensor + x
 
         return output
@@ -75,7 +67,7 @@ class MIRNet(nn.Module):
         return {
             "total_parameters": total_params,
             "trainable_parameters": trainable_params,
-            "model_size_mb": total_params * 4 / (1024**2),  # Assuming float32
+            "model_size_mb": total_params * 4 / (1024**2),
         }
 
     def print_model_summary(self):
@@ -111,17 +103,14 @@ def create_mirnet_model(config):
 
 
 if __name__ == "__main__":
-    # Test model creation
     import sys
 
     sys.path.append(".")
     import config
 
-    # Create model
     model = create_mirnet_model(config)
     model.print_model_summary()
 
-    # Test forward pass
     dummy_input = torch.randn(1, 3, 128, 128)
     with torch.no_grad():
         output = model(dummy_input)
